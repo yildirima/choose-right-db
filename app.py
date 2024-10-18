@@ -91,7 +91,7 @@ def determine_categories():
        else:
            return [10]  # Real-time Analytic Engines
    elif answer_1 == 'HTAP':
-       return [1, 11] if answer_3 == 'SQL' else [12]  # Relational + RDBMS or In-memory Grid
+       return [1, 11] if answer_3 == 'SQL' else [12]  # Relational & RDBMS or In-memory Grid
 
 if __name__ == '__main__':
    app.run(host='0.0.0.0', port=5000)
