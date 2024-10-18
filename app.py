@@ -22,6 +22,7 @@ database_lists = {
 @app.route('/')
 def start():
    session.clear()  # Clear previous session data
+   print("DEBUG: Session cleared.")
    return redirect(url_for('question', step=1))
 
 @app.route('/question/<int:step>', methods=['GET', 'POST'])
@@ -29,6 +30,7 @@ def question(step):
    if request.method == 'POST':
        answer = request.form.get('answer')
        session[f'answer_{step}'] = answer  # Save answer in session
+       print(f"DEBUG: Saved answer for step {step}: {answer}")
        return redirect(url_for('question', step=step + 1))
 
    # Step-based questions with conditional logic
@@ -66,10 +68,14 @@ def question(step):
 def result():
    # Ensure determine_categories always returns a valid list
    db_categories = determine_categories()
+   print(f"DEBUG: db_categories = {db_categories}")
+
    if not db_categories:  # If None or empty, return a default message
        databases = ["No matching databases found."]
    else:
        databases = [db for cat in db_categories for db in database_lists.get(cat, [])]
+
+   print(f"DEBUG: databases = {databases}")
    return render_template('result.html', databases=databases)
 
 def determine_categories():
@@ -102,6 +108,7 @@ def determine_categories():
        elif answer_3 == 'Multi-attribute':
            print("DEBUG: Returning [12] for HTAP-Multi-attribute")
            return [12]  # In-memory Data Store/Grid
+
    return []  # Return empty list if no valid path is found
 
 if __name__ == '__main__':
