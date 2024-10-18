@@ -93,7 +93,7 @@ def determine_categories():
    elif answer_1 == 'HTAP':
        if answer_3 == 'SQL':
            return [1, 11]  # Relational DB Systems + Transactional/Analytical RDBMS
-       else:
+       elif answer_3 == 'Multi-attribute':
            return [12]  # In-memory Data Store/Grid
 
 if __name__ == '__main__':
