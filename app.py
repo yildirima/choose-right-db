@@ -78,6 +78,8 @@ def determine_categories():
    answer_2 = session.get('answer_2', '')
    answer_3 = session.get('answer_3', '')
 
+   print(f"DEBUG: answer_1={answer_1}, answer_2={answer_2}, answer_3={answer_3}")
+
    # Logic based on the decision tree with proper default handling
    if answer_1 == 'Operational':
        if answer_2 == 'Batch':
@@ -95,8 +97,10 @@ def determine_categories():
            return [10]  # Real-time Analytic Engines
    elif answer_1 == 'HTAP':
        if answer_3 == 'SQL':
+           print("DEBUG: Returning [1, 11] for HTAP-SQL")
            return [1, 11]  # Relational DB Systems + Transactional/Analytical RDBMS
        elif answer_3 == 'Multi-attribute':
+           print("DEBUG: Returning [12] for HTAP-Multi-attribute")
            return [12]  # In-memory Data Store/Grid
    return []  # Return empty list if no valid path is found
 
