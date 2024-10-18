@@ -51,11 +51,11 @@ def question(step):
        if session['answer_2'] == 'Near-Real-Time Performance':
            question_text = "Do you prefer Key-only or Multi-attribute queries?"
            options = ['Key-only', 'Multi-attribute']
-       elif session['answer_1'] == 'Operational' and session['answer_2'] == 'Consistent Data':
+       elif session['answer_2'] == 'Consistent Data':
            question_text = "Do you prefer SQL or Multi-attribute queries?"
            options = ['SQL', 'Multi-attribute']
        else:
-           return redirect(url_for('result'))  # Skip if Batch was chosen
+           return redirect(url_for('result'))
    else:
        return redirect(url_for('result'))
 
@@ -84,7 +84,7 @@ def determine_category():
            return 4 if answer_3 == 'Key-only' else 6  # Key-Value or Wide-Column Data Stores
    elif answer_1 == 'Analytical':
        if answer_2 == 'Batch':
-           return 8  # Hadoop Ecosystem Data Stores
+           return 3 if answer_3 == 'SQL' else 7  # Relational Data Warehouses or Graph Data Stores
        elif answer_2 == 'Consistent Data':
            return 3  # Relational Data Warehouses
        else:
