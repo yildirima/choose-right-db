@@ -1,17 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>Database Decision Tree</title>
-</head>
-<body>
-   <h1>{{ question }}</h1>
-   <form method="POST">
-       {% for option in options %}
-           <input type="radio" name="answer" value="{{ option }}" required> {{ option }}<br>
-       {% endfor %}
-       <input type="submit" value="Next">
-   </form>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Selector - Question</title> </head> <body>
+    <h1>Step {{ step }}</h1>
+    <p>{{ question }}</p>
+
+    <form method="POST">
+        <input type="number" name="answer" min="0" max="2" required>
+        <button type="submit">Next</button>
+    </form>
 </body>
 </html>
