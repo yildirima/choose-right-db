@@ -27,7 +27,7 @@ def start():
 
 @app.route('/question/<int:step>', methods=['GET', 'POST'])
 def question(step):
-   # Ensure the path is properly initialized in case of unexpected issues
+   # Ensure the path is properly initialized
    if "path" not in session:
        session["path"] = []
 
@@ -66,11 +66,18 @@ def question(step):
 
 @app.route('/result')
 def result():
-   path = tuple(session.get("path", []))  # Retrieve the path from session
+   # Retrieve the path from session and convert to tuple
+   path = tuple(session.get("path", []))
    print(f"DEBUG: Final path = {path}")
 
-   databases = path_to_databases.get(path, ["No matching databases found."])
-   print(f"DEBUG: Databases = {databases}")
+   # Attempt to find the matching databases
+   databases = path_to_databases.get(path)
+
+   if not databases:
+       print("DEBUG: No matching databases found for the given path.")
+       databases = ["No matching databases found."]
+   else:
+       print(f"DEBUG: Matching databases = {databases}")
 
    return render_template('result.html', databases=databases)
 
