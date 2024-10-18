@@ -3,62 +3,58 @@ from flask import Flask, request, render_template, redirect, url_for, session
 app = Flask(__name__)
 app.secret_key = "choose_db_secret_key"
 
-# Database lists based on the decision tree
-database_lists = {
-   1: ["Azure SQL Database", "Oracle Database", "Amazon Aurora"],
-   2: ["Google Cloud Spanner", "Cockroach Labs", "NuoDB", "Yugabyte"],
-   3: ["Amazon Redshift", "Azure Synapse", "Google BigQuery"],
-   4: ["Aerospike", "Amazon DynamoDB"],
-   5: ["MongoDB", "Couchbase", "RavenDB", "Azure Cosmos DB", "MarkLogic"],
-   6: ["Apache Cassandra", "DataStax Enterprise (DSE)"],
-   7: ["Apache TinkerPop", "Neo4j", "OrientDB", "TigerGraph"],
-   8: ["Amazon EMR", "Cloudera", "Azure HDInsight", "Apache Hadoop Ozone", "Apache HBase"],
-   9: ["Amazon S3", "Azure Blob Storage"],
-   10: ["Spark", "Storm", "Amazon Kinesis", "Azure Stream Analytics", "Google Cloud Dataflow"],
-   11: ["VoltDB", "SAP HANA", "SingleStore"],
-   12: ["Hazelcast", "Redis", "Gridgain"]
+# Database mapping based on decision paths
+path_to_databases = {
+   ("Operational", "Batch"): [9],  # Object Stores
+   ("Operational", "Consistent Data", "SQL"): [1, 2],  # Relational DB & Distributed SQL
+   ("Operational", "Consistent Data", "Multi-attribute"): [5],  # Document Data Stores
+   ("Operational", "Near-Real-Time Performance", "Key-only"): [4, 9],  # Key-Value & Object Stores
+   ("Operational", "Near-Real-Time Performance", "Multi-attribute"): [6],  # Wide-Column Data Stores
+   ("Analytical", "Batch", "SQL"): [3],  # Relational Data Warehouses
+   ("Analytical", "Batch", "Multi-attribute"): [7],  # Graph Data Stores
+   ("Analytical", "Consistent Data"): [3],  # Relational Data Warehouses
+   ("Analytical", "Near-Real-Time Performance"): [10],  # Real-time Analytic Engines
+   ("HTAP", "SQL"): [1, 11],  # Relational DB & Transactional/Analytical RDBMS
+   ("HTAP", "Multi-attribute"): [12]  # In-memory Data Store/Grid
 }
 
 @app.route('/')
 def start():
-   session.clear()  # Clear previous session data
-   print("DEBUG: Session cleared.")
+   session.clear()  # Clear the session at the start
+   session["path"] = []  # Initialize an empty path
+   print("DEBUG: Session cleared and path initialized.")
    return redirect(url_for('question', step=1))
 
 @app.route('/question/<int:step>', methods=['GET', 'POST'])
 def question(step):
    if request.method == 'POST':
        answer = request.form.get('answer')
-       session[f'answer_{step}'] = answer  # Save answer in session
-       print(f"DEBUG: Saved answer for step {step}: {answer}")
+       session["path"].append(answer)  # Append the answer to the path
+       print(f"DEBUG: Added '{answer}' to path: {session['path']}")
        return redirect(url_for('question', step=step + 1))
 
-   # Step-based questions with conditional logic
+   # Define questions based on the step number
    if step == 1:
        question_text = "Is your use case Operational, Analytical, or HTAP?"
        options = ['Operational', 'Analytical', 'HTAP']
-   elif step == 2:
-       if session.get('answer_1') == 'Operational':
-           question_text = "Do you need Consistent Data, Near-Real-Time Performance, or Batch?"
-           options = ['Consistent Data', 'Near-Real-Time Performance', 'Batch']
-       elif session.get('answer_1') == 'Analytical':
-           question_text = "Do you need Batch, Consistent Data, or Near-Real-Time Performance?"
-           options = ['Batch', 'Consistent Data', 'Near-Real-Time Performance']
-       elif session.get('answer_1') == 'HTAP':
-           question_text = "Do you prefer SQL or Multi-attribute queries?"
-           options = ['SQL', 'Multi-attribute']
-   elif step == 3:
-       if session.get('answer_2') == 'Consistent Data' and session.get('answer_1') == 'Operational':
-           question_text = "Do you prefer SQL or Multi-attribute queries?"
-           options = ['SQL', 'Multi-attribute']
-       elif session.get('answer_2') == 'Near-Real-Time Performance':
-           question_text = "Do you prefer Key-only or Multi-attribute queries?"
-           options = ['Key-only', 'Multi-attribute']
-       elif session.get('answer_2') == 'Batch' and session.get('answer_1') == 'Analytical':
-           question_text = "Do you prefer SQL or Multi-attribute queries?"
-           options = ['SQL', 'Multi-attribute']
-       else:
-           return redirect(url_for('result'))
+   elif step == 2 and session["path"][0] == 'Operational':
+       question_text = "Do you need Consistent Data, Near-Real-Time Performance, or Batch?"
+       options = ['Consistent Data', 'Near-Real-Time Performance', 'Batch']
+   elif step == 2 and session["path"][0] == 'Analytical':
+       question_text = "Do you need Batch, Consistent Data, or Near-Real-Time Performance?"
+       options = ['Batch', 'Consistent Data', 'Near-Real-Time Performance']
+   elif step == 2 and session["path"][0] == 'HTAP':
+       question_text = "Do you prefer SQL or Multi-attribute queries?"
+       options = ['SQL', 'Multi-attribute']
+   elif step == 3 and session["path"][:2] == ['Operational', 'Consistent Data']:
+       question_text = "Do you prefer SQL or Multi-attribute queries?"
+       options = ['SQL', 'Multi-attribute']
+   elif step == 3 and session["path"][:2] == ['Operational', 'Near-Real-Time Performance']:
+       question_text = "Do you prefer Key-only or Multi-attribute queries?"
+       options = ['Key-only', 'Multi-attribute']
+   elif step == 3 and session["path"][:2] == ['Analytical', 'Batch']:
+       question_text = "Do you prefer SQL or Multi-attribute queries?"
+       options = ['SQL', 'Multi-attribute']
    else:
        return redirect(url_for('result'))
 
@@ -66,50 +62,13 @@ def question(step):
 
 @app.route('/result')
 def result():
-   # Ensure determine_categories always returns a valid list
-   db_categories = determine_categories()
-   print(f"DEBUG: db_categories = {db_categories}")
+   path = tuple(session.get("path", []))  # Retrieve the path from session
+   print(f"DEBUG: Final path = {path}")
 
-   if not db_categories:  # If None or empty, return a default message
-       databases = ["No matching databases found."]
-   else:
-       databases = [db for cat in db_categories for db in database_lists.get(cat, [])]
+   databases = path_to_databases.get(path, ["No matching databases found."])
+   print(f"DEBUG: Databases = {databases}")
 
-   print(f"DEBUG: databases = {databases}")
    return render_template('result.html', databases=databases)
-
-def determine_categories():
-   # Retrieve answers from session with safe default values
-   answer_1 = session.get('answer_1', '')
-   answer_2 = session.get('answer_2', '')  # Only relevant for Operational/Analytical paths
-   answer_3 = session.get('answer_3', '')  # Used for HTAP
-
-   print(f"DEBUG: answer_1={answer_1}, answer_2={answer_2}, answer_3={answer_3}")
-
-   # Logic based on the decision tree with proper default handling
-   if answer_1 == 'Operational':
-       if answer_2 == 'Batch':
-           return [9]  # Object Stores
-       elif answer_2 == 'Consistent Data':
-           return [1, 2] if answer_3 == 'SQL' else [5]  # Relational & Distributed SQL or Document Data Stores
-       elif answer_2 == 'Near-Real-Time Performance':
-           return [4, 9] if answer_3 == 'Key-only' else [6]  # Key-Value & Object Stores or Wide-Column Data Stores
-   elif answer_1 == 'Analytical':
-       if answer_2 == 'Batch':
-           return [3] if answer_3 == 'SQL' else [7]  # Relational Warehouses or Graph Data Stores
-       elif answer_2 == 'Consistent Data':
-           return [3]  # Relational Data Warehouses
-       else:
-           return [10]  # Real-time Analytic Engines
-   elif answer_1 == 'HTAP':
-       if answer_3 == 'SQL':
-           print("DEBUG: Returning [1, 11] for HTAP-SQL")
-           return [1, 11]  # Relational DB Systems + Transactional/Analytical RDBMS
-       elif answer_3 == 'Multi-attribute':
-           print("DEBUG: Returning [12] for HTAP-Multi-attribute")
-           return [12]  # In-memory Data Store/Grid
-
-   return []  # Return empty list if no valid path is found
 
 if __name__ == '__main__':
    app.run(host='0.0.0.0', port=5000)
