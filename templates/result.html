@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>Database Recommendation</title>
-</head>
-<body>
-   <h1>Recommended Databases</h1>
-   <ul>
-       {% for db in databases %}
-           <li>{{ db }}</li>
-       {% endfor %}
-   </ul>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Selector - Result</title> </head> <body>
+    <h1>Recommended Databases</h1>
+
+    <ul>
+        {% for db in databases %}
+            <li>{{ db }}</li>
+        {% endfor %}
+    </ul>
+
+    <a href="/">Start Over</a>
 </body>
 </html>
