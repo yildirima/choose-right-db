@@ -81,8 +81,8 @@ def result():
 def determine_categories():
    # Retrieve answers from session with safe default values
    answer_1 = session.get('answer_1', '')
-   answer_2 = session.get('answer_2', '')
-   answer_3 = session.get('answer_3', '')
+   answer_2 = session.get('answer_2', '')  # Only relevant for Operational/Analytical paths
+   answer_3 = session.get('answer_3', '')  # Used for HTAP
 
    print(f"DEBUG: answer_1={answer_1}, answer_2={answer_2}, answer_3={answer_3}")
 
