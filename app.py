@@ -1,85 +1,74 @@
 from flask import Flask, request, render_template, redirect, url_for, session
+from sklearn.tree import DecisionTreeClassifier
+import numpy as np
 
 app = Flask(__name__)
 app.secret_key = "choose_db_secret_key"
 
-# Database mapping based on decision paths
-path_to_databases = {
-   ("Operational", "Batch"): [9],  # Object Stores
-   ("Operational", "Consistent Data", "SQL"): [1, 2],  # Relational DB & Distributed SQL
-   ("Operational", "Consistent Data", "Multi-attribute"): [5],  # Document Data Stores
-   ("Operational", "Near-Real-Time Performance", "Key-only"): [4, 9],  # Key-Value & Object Stores
-   ("Operational", "Near-Real-Time Performance", "Multi-attribute"): [6],  # Wide-Column Data Stores
-   ("Analytical", "Batch", "SQL"): [3],  # Relational Data Warehouses
-   ("Analytical", "Batch", "Multi-attribute"): [7],  # Graph Data Stores
-   ("Analytical", "Consistent Data"): [3],  # Relational Data Warehouses
-   ("Analytical", "Near-Real-Time Performance"): [10],  # Real-time Analytic Engines
-   ("HTAP", "SQL"): [1, 11],  # Relational DB & Transactional/Analytical RDBMS
-   ("HTAP", "Multi-attribute"): [12]  # In-memory Data Store/Grid
-}
+# Example training data (answers mapped to categories)
+# Features: [Use Case, Data Requirement, Query Type]
+# Use Case: 0 = Operational, 1 = Analytical, 2 = HTAP
+# Data Requirement: 0 = Batch, 1 = Consistent Data, 2 = Near-Real-Time
+# Query Type: 0 = SQL, 1 = Multi-attribute, 2 = Key-only
+
+X_train = np.array([
+   [0, 0, 0],  # Operational, Batch, SQL -> [9]
+   [0, 1, 0],  # Operational, Consistent Data, SQL -> [1, 2]
+   [0, 1, 1],  # Operational, Consistent Data, Multi-attribute -> [5]
+   [0, 2, 2],  # Operational, Near-Real-Time, Key-only -> [4, 9]
+   [0, 2, 1],  # Operational, Near-Real-Time, Multi-attribute -> [6]
+   [1, 0, 0],  # Analytical, Batch, SQL -> [3]
+   [1, 0, 1],  # Analytical, Batch, Multi-attribute -> [7]
+   [1, 1, 0],  # Analytical, Consistent Data -> [3]
+   [1, 2, 1],  # Analytical, Near-Real-Time -> [10]
+   [2, 1, 0],  # HTAP, SQL -> [1, 11]
+   [2, 1, 1],  # HTAP, Multi-attribute -> [12]
+])
+
+y_train = np.array([
+   9, [1, 2], 5, [4, 9], 6, 3, 7, 3, 10, [1, 11], 12
+])
+
+# Train the Decision Tree model
+model = DecisionTreeClassifier()
+model.fit(X_train, y_train)
 
 @app.route('/')
 def start():
-   session.clear()  # Clear the session at the start
-   session["path"] = []  # Initialize an empty path
-   print("DEBUG: Session cleared and path initialized.")
+   session.clear()  # Clear session at the start
+   session["answers"] = []  # Initialize an empty answers list
+   print("DEBUG: Session cleared and answers initialized.")
    return redirect(url_for('question', step=1))
 
 @app.route('/question/<int:step>', methods=['GET', 'POST'])
 def question(step):
-   # Ensure the path is properly initialized
-   if "path" not in session:
-       session["path"] = []
-
    if request.method == 'POST':
-       answer = request.form.get('answer')
-       session["path"].append(answer)  # Append the answer to the path
-       print(f"DEBUG: Added '{answer}' to path: {session['path']}")
+       answer = int(request.form.get('answer'))  # Store answers as integers
+       session["answers"].append(answer)  # Append to session answers
+       print(f"DEBUG: Added '{answer}' to answers: {session['answers']}")
        return redirect(url_for('question', step=step + 1))
 
    # Define questions based on the step number
    if step == 1:
-       question_text = "Is your use case Operational, Analytical, or HTAP?"
-       options = ['Operational', 'Analytical', 'HTAP']
-   elif step == 2 and len(session["path"]) > 0 and session["path"][0] == 'Operational':
-       question_text = "Do you need Consistent Data, Near-Real-Time Performance, or Batch?"
-       options = ['Consistent Data', 'Near-Real-Time Performance', 'Batch']
-   elif step == 2 and len(session["path"]) > 0 and session["path"][0] == 'Analytical':
-       question_text = "Do you need Batch, Consistent Data, or Near-Real-Time Performance?"
-       options = ['Batch', 'Consistent Data', 'Near-Real-Time Performance']
-   elif step == 2 and len(session["path"]) > 0 and session["path"][0] == 'HTAP':
-       question_text = "Do you prefer SQL or Multi-attribute queries?"
-       options = ['SQL', 'Multi-attribute']
-   elif step == 3 and session["path"][:2] == ['Operational', 'Consistent Data']:
-       question_text = "Do you prefer SQL or Multi-attribute queries?"
-       options = ['SQL', 'Multi-attribute']
-   elif step == 3 and session["path"][:2] == ['Operational', 'Near-Real-Time Performance']:
-       question_text = "Do you prefer Key-only or Multi-attribute queries?"
-       options = ['Key-only', 'Multi-attribute']
-   elif step == 3 and session["path"][:2] == ['Analytical', 'Batch']:
-       question_text = "Do you prefer SQL or Multi-attribute queries?"
-       options = ['SQL', 'Multi-attribute']
+       question_text = "Select your use case: Operational (0), Analytical (1), or HTAP (2)"
+   elif step == 2:
+       question_text = "Select your data requirement: Batch (0), Consistent Data (1), or Near-Real-Time (2)"
+   elif step == 3:
+       question_text = "Select your query type: SQL (0), Multi-attribute (1), or Key-only (2)"
    else:
        return redirect(url_for('result'))
 
-   return render_template('question.html', question=question_text, options=options, step=step)
+   return render_template('question.html', question=question_text, step=step)
 
 @app.route('/result')
 def result():
-   # Retrieve the path from session and convert to tuple
-   path = tuple(session.get("path", []))
-   print(f"DEBUG: Final path = {path}")
+   answers = np.array(session.get("answers", [])).reshape(1, -1)
+   print(f"DEBUG: Answers for prediction: {answers}")
 
-   # Attempt to find the matching databases
-   databases = path_to_databases.get(path)
+   prediction = model.predict(answers)[0]
+   print(f"DEBUG: Predicted databases: {prediction}")
 
-   if not databases:
-       print("DEBUG: No matching databases found for the given path.")
-       databases = ["No matching databases found."]
-   else:
-       print(f"DEBUG: Matching databases = {databases}")
-
-   return render_template('result.html', databases=databases)
+   return render_template('result.html', databases=prediction)
 
 if __name__ == '__main__':
    app.run(host='0.0.0.0', port=5000)
