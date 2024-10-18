@@ -36,23 +36,23 @@ def question(step):
        question_text = "Is your use case Operational, Analytical, or HTAP?"
        options = ['Operational', 'Analytical', 'HTAP']
    elif step == 2:
-       if session['answer_1'] == 'Operational':
+       if session.get('answer_1') == 'Operational':
            question_text = "Do you need Consistent Data, Near-Real-Time Performance, or Batch?"
            options = ['Consistent Data', 'Near-Real-Time Performance', 'Batch']
-       elif session['answer_1'] == 'Analytical':
+       elif session.get('answer_1') == 'Analytical':
            question_text = "Do you need Batch, Consistent Data, or Near-Real-Time Performance?"
            options = ['Batch', 'Consistent Data', 'Near-Real-Time Performance']
-       elif session['answer_1'] == 'HTAP':
+       elif session.get('answer_1') == 'HTAP':
            question_text = "Do you prefer SQL or Multi-attribute queries?"
            options = ['SQL', 'Multi-attribute']
    elif step == 3:
-       if session['answer_2'] == 'Consistent Data' and session['answer_1'] == 'Operational':
+       if session.get('answer_2') == 'Consistent Data' and session.get('answer_1') == 'Operational':
            question_text = "Do you prefer SQL or Multi-attribute queries?"
            options = ['SQL', 'Multi-attribute']
-       elif session['answer_2'] == 'Near-Real-Time Performance':
+       elif session.get('answer_2') == 'Near-Real-Time Performance':
            question_text = "Do you prefer Key-only or Multi-attribute queries?"
            options = ['Key-only', 'Multi-attribute']
-       elif session['answer_2'] == 'Batch' and session['answer_1'] == 'Analytical':
+       elif session.get('answer_2') == 'Batch' and session.get('answer_1') == 'Analytical':
            question_text = "Do you prefer SQL or Multi-attribute queries?"
            options = ['SQL', 'Multi-attribute']
        else:
@@ -64,18 +64,21 @@ def question(step):
 
 @app.route('/result')
 def result():
-   # Determine the correct database categories based on user input
+   # Ensure determine_categories always returns a valid list
    db_categories = determine_categories()
-   databases = [db for cat in db_categories for db in database_lists.get(cat, [])]
+   if not db_categories:  # If None or empty, return a default message
+       databases = ["No matching databases found."]
+   else:
+       databases = [db for cat in db_categories for db in database_lists.get(cat, [])]
    return render_template('result.html', databases=databases)
 
 def determine_categories():
-   # Retrieve answers from session
-   answer_1 = session.get('answer_1')
-   answer_2 = session.get('answer_2')
-   answer_3 = session.get('answer_3')
+   # Retrieve answers from session with safe default values
+   answer_1 = session.get('answer_1', '')
+   answer_2 = session.get('answer_2', '')
+   answer_3 = session.get('answer_3', '')
 
-   # Logic based on the decision tree
+   # Logic based on the decision tree with proper default handling
    if answer_1 == 'Operational':
        if answer_2 == 'Batch':
            return [9]  # Object Stores
@@ -95,6 +98,7 @@ def determine_categories():
            return [1, 11]  # Relational DB Systems + Transactional/Analytical RDBMS
        elif answer_3 == 'Multi-attribute':
            return [12]  # In-memory Data Store/Grid
+   return []  # Return empty list if no valid path is found
 
 if __name__ == '__main__':
    app.run(host='0.0.0.0', port=5000)
